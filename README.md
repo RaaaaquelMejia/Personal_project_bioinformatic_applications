@@ -59,12 +59,14 @@ screen -S gp
 
 screen -r gp
 ```
-The results of the analysis were gived in a HTML file available here : file:///C:/Users/raque/Desktop/UNINE/Bioinformatics%20application/Personnal%20project/Pipeline/pipeline_report%20(1).html
+The results of the analysis were gived in a HTML file available as "pipeline_report_Numenius_arquata.html" in the main repository. 
 
 ## Data filtering to keep only the good quality data
 
 - Based on the results of the pipeline, we filtered to keep only the good data (with high concordance with the reference genome ?)
 - We selected only the data with > 80 or 90 concordance and create a new file containing only this data
+
+## 
 
 ## Bibliography
 
