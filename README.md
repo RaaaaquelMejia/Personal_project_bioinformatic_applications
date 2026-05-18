@@ -66,6 +66,112 @@ The results of the analysis were gived in a HTML file available as "pipeline_rep
 - Based on the results of the pipeline, we filtered to keep only the good data (with high concordance with the reference genome ?)
 - We selected only the data with > 80 or 90 concordance and create a new file containing only this data
 
+```
+# New filter MAT 
+vcftools --gzvcf results_numenius/final_variants.clean.max_missing_0.9.recode.vcf.gz \
+  --maf 0.05 \
+  --recode --stdout | bgzip -c > results_numenius/output.maf05.vcf.gz
+
+  # Index it
+  tabix -p vcf results_numenius/output.maf05.vcf.gz
+
+  # Use PLINK to analyse and estimate inbreeding rate
+# Install plink
+  cd ~
+mkdir plink
+cd plink
+wget https://s3.amazonaws.com/plink1-assets/plink_linux_x86_64_20231211.zip #linux version
+
+unzip plink_linux_x86_64_20231211.zip
+chmod +x plink
+
+# Test to see if plink is loaded
+./plink --help
+export PATH=$PATH:~/plink
+plink --help
+
+# Set working directory
+cd /home/ba-student2/Personal_project_bioinformatic_applications/results_numenius
+
+# Pipeline plink
+
+plink --vcf output.maf05.vcf.gz \
+--allow-extra-chr \
+--make-bed \
+--out data
+
+plink --bfile data \
+--allow-extra-chr \
+--indep-pairwise 50 5 0.2 \
+--out prune
+
+plink --bfile data \
+--allow-extra-chr \
+--extract prune.prune.in \
+--make-bed \
+--out data_pruned
+
+# Output PCA
+
+plink --bfile data_pruned \
+--allow-extra-chr \
+--pca \
+--out PCA
+
+# PC Graph directly with R Studio and ggplot2
+
+library(ggplot2)
+
+pca <- read.table("PCA.eigenvec.txt", header=FALSE)
+
+colnames(pca)[1:2] <- c("FID", "IID")
+
+colnames(pca)[3:ncol(pca)] <- paste0("PC", 1:(ncol(pca)-2))
+
+ggplot(pca, aes(x = PC1, y = PC2)) +
+  geom_point(size = 3) +
+  theme_minimal() +
+  xlab("PC1") +
+  ylab("PC2") +
+  ggtitle("PCA - Numenius arquata")
+
+
+meta <- read.table("meta_2.txt", header = TRUE)
+
+pca <- merge(pca, meta, by = "IID")
+
+ggplot(pca, aes(x = PC1, y = PC2, color = Pop)) +
+  geom_point(size = 3, alpha = 0.8) +
+  theme_minimal() +
+  labs(
+    title = "PCA - Numenius arquata and Numenius phaeopus",
+    x = "PC1",
+    y = "PC2",
+    color = "Population"
+  )
+
+ggplot(pca, aes(x = PC1, y = PC2, color = Pop)) +
+  geom_point(size = 3, alpha = 0.8) +
+  theme_minimal() +
+  labs(
+    title = "PCA - Numenius arquata",
+    x = "PC1",
+    y = "PC2",
+    color = "Population"
+  )
+
+ggplot(pca, aes(PC1, PC2, color = Pop)) +
+  geom_point(size = 3) +
+  stat_ellipse() +
+  theme_minimal()
+
+  # Calcul de ROH
+  plink --bfile data_pruned \
+--allow-extra-chr \
+--homozyg \
+--out ROH
+```
+
 ## 
 
 ## Bibliography
