@@ -114,4 +114,4 @@ plink --bfile data_pruned \
 --pca \
 --out PCA
 
-## Now to have the PCA figure, we use the results of PLINK (PCA.eigenvec.txt) in RStudio. See the code called "PCA_figure.txt".
+## Now to have the PCA figure, we use the results of PLINK (PCA.eigenvec) in RStudio. See the code called "PCA_figure.txt".
