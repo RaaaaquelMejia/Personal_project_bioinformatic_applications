@@ -61,12 +61,37 @@ screen -r gp
 ```
 The results of the analysis were gived in a HTML file available as "pipeline_report_Numenius_arquata.html" in the main repository. 
 
-## Data filtering to keep only the good quality data
+## Data filtering to keep only the good quality data with VCFtools
+
+VCFtools is a program package designed for working with VCF files. This toolset can be used to perform different operations on VCF files such as filtering out specific variants, create intersections and subsets of variants or compare files.
 
 - Based on the results of the pipeline, we filtered to keep only the good data (with high concordance with the reference genome ?)
 - We selected only the data with > 80 or 90 concordance and create a new file containing only this data
 
 ```
+# Downloading VCFtools 
+
+module spider vcftools # to find hiding program already installed
+module load VCFtools # load the programm
+
+# VCFtools filtering with --keep option to use selected samples
+# First, filter with --max-missing 0.8 (keep variants with 20% or less missing data)
+# Using --stdout to pipe directly to bgzip for compression
+vcftools --gzvcf results_numenius/final_variants.clean.vcf.gz --keep results_numenius/Selected_SRR.tsv --max-missing 0.8 --recode --recode-INFO-all --stdout | bgzip -c > results_numenius/final_variants.clean.max_missing_0.8.recode.vcf.gz
+
+# Index the compressed VCF file
+tabix -p vcf results_numenius/final_variants.clean.max_missing_0.8.recode.vcf.gz
+
+# Second, filter with --max-missing 0.9 (keep variants with 10% or less missing data - stricter)
+# Using --stdout to pipe directly to bgzip for compression
+vcftools --gzvcf results_numenius/final_variants.clean.vcf.gz --keep results_numenius/Selected_SRR.tsv --max-missing 0.9 --recode --recode-INFO-all --stdout | bgzip -c > results_numenius/final_variants.clean.max_missing_0.9.recode.vcf.gz
+
+# Index the compressed VCF file
+tabix -p vcf results_numenius/final_variants.clean.max_missing_0.9.recode.vcf.gz
+
+# Verify output files were created
+ls -lh results_numenius/final_variants.clean.max_missing_0.*.recode.vcf*
+
 # New filter MAT 
 vcftools --gzvcf results_numenius/final_variants.clean.max_missing_0.9.recode.vcf.gz \
   --maf 0.05 \
@@ -74,8 +99,13 @@ vcftools --gzvcf results_numenius/final_variants.clean.max_missing_0.9.recode.vc
 
   # Index it
   tabix -p vcf results_numenius/output.maf05.vcf.gz
+```
+## Analyse and estimate inbreeding rate with PLINK
 
-  # Use PLINK to analyse and estimate inbreeding rate
+PLINK is an open-source whole genome association analysis toolset, designed to perform a range of basic, large-scale analyses in a computationally efficient manner.
+We used PLINK here to analyse the data and generate a PCA output of the proximity of individuals based on their genetic data.
+
+```
 # Install plink
   cd ~
 mkdir plink
@@ -91,9 +121,10 @@ export PATH=$PATH:~/plink
 plink --help
 
 # Set working directory
+# Important to change to your working directory
 cd /home/ba-student2/Personal_project_bioinformatic_applications/results_numenius
 
-# Pipeline plink
+# PLINK Pipeline
 
 plink --vcf output.maf05.vcf.gz \
 --allow-extra-chr \
@@ -117,9 +148,15 @@ plink --bfile data_pruned \
 --allow-extra-chr \
 --pca \
 --out PCA
+```
 
-# PC Graph directly with R Studio and ggplot2
+## Estimating the inbreeding rate with PCA visualisation
 
+The PLINK pipeline created a nex file with the data needed to visualise a PCA of the individuals genetic data based on their species and location.
+This data is contained in the file called "PCA_figure.txt". 
+To visualise the PCA, we used ggplot2 on RStudio. The results are available in the main folder.
+
+```
 library(ggplot2)
 
 pca <- read.table("PCA.eigenvec.txt", header=FALSE)
@@ -164,18 +201,14 @@ ggplot(pca, aes(PC1, PC2, color = Pop)) +
   geom_point(size = 3) +
   stat_ellipse() +
   theme_minimal()
-
-  # Calcul de ROH
-  plink --bfile data_pruned \
---allow-extra-chr \
---homozyg \
---out ROH
 ```
-
-## 
 
 ## Bibliography
 
 Croll, D. (2026). genomepanel_nf - a highly efficient Nextflow pipeline for reference genome variant calling of large genome panels (v1.0.5). Zenodo. https://doi.org/10.5281/zenodo.19392838
 
 Tan, H.Z., Ng, E.Y.X., Tang, Q. et al. Population genomics of two congeneric Palaearctic shorebirds reveals differential impacts of Quaternary climate oscillations across habitats types. Sci Rep 9, 18172 (2019). https://doi.org/10.1038/s41598-019-54715-9
+
+The Variant Call Format and VCFtools, Petr Danecek, Adam Auton, Goncalo Abecasis, Cornelis A. Albers, Eric Banks, Mark A. DePristo, Robert Handsaker, Gerton Lunter, Gabor Marth, Stephen T. Sherry, Gilean McVean, Richard Durbin and 1000 Genomes Project Analysis Group, Bioinformatics, 2011
+
+Weeks JP (2010). “plink: An R Package for Linking Mixed-Format Tests Using IRT-Based Methods.” Journal of Statistical Software, 35(12), 1–33. http://www.jstatsoft.org/v35/i12/.
